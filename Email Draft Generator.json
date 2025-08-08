@@ -1,0 +1,2377 @@
+{
+  "name": "Email Draft Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const encoded = Buffer.from($json.raw).toString('base64');\n\nreturn { encoded };"
+      },
+      "id": "fadbf812-a645-4f4c-bc79-c2ad3ca3a0af",
+      "name": "Convert raw to base64",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"message\":{\"raw\":\"{{ $json.encoded }}\", \"threadId\": \"{{ $('Map fields for further processing').item.json[\"threadId\"] }}\"}}",
+        "options": {}
+      },
+      "id": "d8385126-420e-4b82-a320-e91444e20f2e",
+      "name": "Add email draft to thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2784,
+        -800
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a77b2d79-1e70-410c-a657-f3d618154ea1",
+              "name": "response",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "20850cac-f82c-4f02-84f0-3de31871a5b8",
+              "name": "threadId",
+              "value": "={{ $json.thread_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d270c18e-39a0-4d87-85f0-cc1ffc9c10ff",
+              "name": "to",
+              "value": "={{ $json.to }}",
+              "type": "string"
+            },
+            {
+              "id": "30acb50b-bdde-44bf-803c-76e0ae65f526",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "88914536-8c25-4877-8914-feab5e32fae3",
+              "name": "messageId",
+              "value": "={{ $json.gmail_id }}",
+              "type": "string"
+            },
+            {
+              "id": "knowledge-sources-count",
+              "name": "knowledge_sources_count",
+              "value": "={{ $json.knowledge_sources_used || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "knowledge-sources-data",
+              "name": "knowledge_sources",
+              "value": "={{ $json.knowledge_sources || [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "52f94d55-6ad4-4fde-b767-7af966bf02f3",
+      "name": "Map fields for further processing",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1760,
+        -864
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.response }}",
+        "destinationKey": "response",
+        "options": {
+          "simpleLineBreaks": false
+        }
+      },
+      "id": "e1db4633-379c-498f-a507-3b76879a96b4",
+      "name": "Convert response to HTML",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "913e9cb1-10de-4637-bf48-40272c7c7fe3",
+              "name": "raw",
+              "value": "=To: {{ $json.to }}\nSubject: {{ $json.subject }}\nContent-Type: text/html; charset=\"utf-8\"\n\n{{ $json.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c3b1c54-7047-496a-a76d-8ca4b5a6bb48",
+      "name": "Build email raw",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2256,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.threadId }}"
+      },
+      "id": "1ebb9f99-0c1e-4424-b97b-b3ee2caf19d9",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        -624
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7e202364-9ab8-4997-bc5f-8d1ced49f717",
+      "name": "Chat Memory Manager",
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1,
+      "position": [
+        3152,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "text": "=Subject: {{ $('Get a message').item.json.subject }}\nBody: {{ $('Get a message').item.json.text }}",
+        "options": {
+          "systemMessage": "=You are a virtual customer-support specialist with access to a comprehensive knowledge base. Your job is to read each incoming email inquiry and craft a clear, concise, and professional response that fully resolves their questions using relevant company information.\n\nIMPORTANT: You have access to a knowledge search tool that can find relevant company information, policies, procedures, and documentation. Always use this tool to search for relevant information before responding.\n\nFollow these guidelines:\n\t1.\tTone & Style\n\t•\tFriendly and empathetic, yet professional.\n\t•\tMatch the customer's level of formality.\n\t•\tKeep paragraphs short and focused.\n\t2.\tStructure\n\t•\tGreeting: e.g. \"Hello [Name],\" or \"Hi there,\"\n\t•\tOpening: Acknowledge their request or issue.\n\t•\tBody:\n\t•\tDirectly address every question or concern raised.\n\t•\tProvide links, resources, or step-by-step instructions as needed.\n\t•\tIf there are multiple steps, use bullet points or numbered lists.\n\t•\tInclude specific information from the knowledge base when relevant.  \n\t•\tClosing: Offer further assistance (e.g. \"Let me know if you need anything else.\") and sign off politely.\n\t3.\tKnowledge Base Usage\n\t•\tAlways search the knowledge base for relevant information related to the customer's inquiry.\n\t•\tUse specific details, policies, and procedures from the knowledge base in your response.\n\t•\tCite sources when referencing specific company policies or procedures.\n\t4.\tCustom Instructions (if provided)\n\t•\tLook for optional custom instructions and follow them when provided.\n\nCRITICAL REQUIREMENT - KNOWLEDGE TRACKING:\nAt the end of your response, you MUST include a tracking section that starts with \"KNOWLEDGE_SOURCES_USED:\" followed by the number of sources you referenced, then \"END_TRACKING\".\n\nFormat: \nKNOWLEDGE_SOURCES_USED: [number]\nSOURCES: [source1 title], [source2 title], [etc]\nSEARCHES: [search1], [search2], [etc] \nEND_TRACKING\n\nExample:\nHello Sarah,\n\nThank you for reaching out about your return request. According to our Customer Refund Policy, you can return items within 30 days for a full refund.\n\nBest regards,\nCustomer Service\n\nKNOWLEDGE_SOURCES_USED: 2\nSOURCES: Customer Refund Policy, Return Process Guide\nSEARCHES: refund policy, return process\nEND_TRACKING"
+        }
+      },
+      "id": "3e83ced4-6561-43f3-9d3a-752f7226e714",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        -832
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.threadId }}"
+      },
+      "id": "7546e505-6bbd-464e-973f-83944049b440",
+      "name": "Window Buffer Memory (check)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.1,
+      "position": [
+        3264,
+        -752
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1008,
+        -656
+      ],
+      "id": "fdfc2d3a-d70d-4901-b6d5-78d799437e29",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Hx3bS2jJSoDFXCBB",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        48
+      ],
+      "id": "2bff3a54-350f-4d31-a5ee-46be4eaae8f7",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $('Generate execution ID').item.json.executionId,\n    id: $json.executionId,\n    gmail_id: $json.gmailId,\n    thread_id: $json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Started',\n      step: 'workflow_started',\n    },\n  })\n}}"
+      },
+      "id": "6e53b805-4bd5-49bd-b6f5-997c64d09a6e",
+      "name": "🔴 Redis: Publish Started",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        544,
+        -608
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID').item.json.executionId }}",
+        "value": "={\n  \"executionId\": \"{{ $('Generate execution ID').item.json.executionId }}\",\n  \"gmailId\": \"{{ $('Get a message').item.json.id }}\",\n  \"threadId\": \"{{ $('Get a message').item.json.threadId }}\",\n  \"status\": \"started\",\n  \"startedAt\": \"{{ $('Generate execution ID').item.json.startedAt }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "ec4e04e1-4981-4eff-a465-858560c285c9",
+      "name": "🔴 Redis: Cache Started",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -608
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $json.execution_id,\n    gmail_id: $json.gmail_id,\n    thread_id: $json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Generating',\n      step: 'ai_processing',\n      knowledge_sources_used: $json.knowledge_sources_used || 0\n    }\n  })\n}}"
+      },
+      "id": "02859cb0-5d6b-4c72-b90a-c09a340dae4f",
+      "name": "🔴 Redis: Publish AI Processing",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        -480
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID').item.json.executionId }}",
+        "value": "={\n  \"executionId\": \"{{ $('Generate execution ID').item.json.executionId }}\",\n  \"gmailId\": \"{{ $('Get a message').item.json.id }}\",\n  \"threadId\": \"{{ $('Get a message').item.json.id }}\",\n  \"status\": \"ai_processing\",\n  \"startedAt\": \"{{ $('Generate execution ID').item.json.startedAt }}\",\n  \"aiResponse\": {{ $('AI Agent').item.json.output }},\n  \"knowledgeSourcesUsed\": {{ $('AI Agent').item.json.knowledge_sources_used || 0 }},\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "3a58d895-928b-4e2d-a758-e83777a4356d",
+      "name": "🔴 Redis: Cache AI Response",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        -480
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $('Generate execution ID').item.json.executionId,\n    gmail_id: $('Get a message').item.json.id,\n    thread_id: $('Get a message').item.json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Draft Created',\n      step: 'draft_creation',\n      knowledge_sources_count: $('Map fields for further processing').item.json.knowledge_sources_count || 0\n    },\n  })\n}}"
+      },
+      "id": "fe191018-77af-4ba8-8ec8-eba9912feb02",
+      "name": "🔴 Redis: Publish Draft Created",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        -464
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    executionId: $('Generate execution ID').item.json.executionId,\n    id: $json.executionId,\n    gmail_id: $json.gmailId,\n    thread_id: $json.threadId,\n    execution_status: 'Completed',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Completed',\n      step: 'workflow_completed',\n      knowledge_sources_count: $('Map fields for further processing').item.json.knowledge_sources_count || 0\n    },\n  })\n}}"
+      },
+      "id": "3c66f236-5cf2-46ed-b757-160dba3b148c",
+      "name": "🔴 Redis: Publish Completed",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3296,
+        -464
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID').item.json.executionId }}",
+        "value": "={\n  \"gmailId\": \"{{ $('Get a message').item.json.id }} ?? \",\n  \"threadId\": \"{{ $('Get a message').item.json.threadId }}\",\n  \"status\": \"completed\",\n  \"startedAt\": \"{{ $('Get a message').item.json.date }}\",\n  \"completedAt\": \"{{ new Date().toISOString() }}\",\n  \"draftId\": \"{{ $('Add email draft to thread').item.json.id }}\",\n  \"knowledgeSourcesUsed\": {{ $('Map fields for further processing').item.json.knowledge_sources_count || 0 }},\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "77652d56-1151-41bb-bf83-812236d5dca7",
+      "name": "🔴 Redis: Cache Completed",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3488,
+        -464
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "19297234-8faa-4a97-9cbc-d9fbc0afe2d4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        -1008
+      ],
+      "id": "cd9fd8e8-6b61-43c4-bd7d-86726665ef70",
+      "name": "Webhook",
+      "webhookId": "ef51348b-8c29-47e3-adce-d61de8f708e7"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.gmail_id }}",
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -592,
+        -944
+      ],
+      "id": "2e79d600-5dd0-468a-9063-afc6af0e8200",
+      "name": "Get a message",
+      "webhookId": "57fb42bd-92f3-4b7b-b9c9-43f9b538f490",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4dfa0045-9660-4db1-a7e9-e97ecbc27878",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        592
+      ],
+      "id": "e1249d60-45d7-49ff-8bfb-9d89243e5626",
+      "name": "Webhook1",
+      "webhookId": "ef51348b-8c29-47e3-adce-d61de8f708e7"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to.text }}",
+        "subject": "=RE: {{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        592
+      ],
+      "id": "0f0c71b9-6999-42c5-ba58-4001e2d9251c",
+      "name": "Send a message",
+      "webhookId": "7deab48a-1f37-4079-8e97-a906b5e93251",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "=19861b50b1c31861",
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -768,
+        592
+      ],
+      "id": "bd65b531-bcd5-4156-8a53-a12395130b7d",
+      "name": "Get a message1",
+      "webhookId": "57fb42bd-92f3-4b7b-b9c9-43f9b538f490",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ed863b7f-16f8-49c1-9867-06f2438ecf1e",
+              "name": "prompt",
+              "value": "={{ $json.body.parseJson().custom_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "96dbccb1-68ef-4242-99b6-4bf86e83141c",
+              "name": "gmail_id",
+              "value": "={{ $json.body.parseJson().gmail_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -800,
+        -1040
+      ],
+      "id": "6ab02292-926e-47ca-bed0-2c3c73e3dc8a",
+      "name": "Get Body"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the company knowledge base for relevant information. Provide a search query to find relevant policies, procedures, and documentation.",
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/knowledge/vector-search",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/json",
+        "body": "={{ JSON.stringify({\nuser_id: 'demo-user',\nquery: 'Aventix',\nsearchType: 'hybrid',\nsimilar\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        -624
+      ],
+      "id": "98d85fa6-20d9-4e0c-8a3f-6acb9bc61d8e",
+      "name": "knowledge_search"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple code node to extract knowledge tracking from AI response\n// Place this node after your AI Agent and before \"Map fields for further processing\"\n\nconst aiOutput = $json.output || '';\n\n// Initialize defaults\nlet knowledgeData = {\n  knowledge_sources_used: 0,\n  knowledge_sources: [],\n  search_queries_made: []\n};\n\nlet cleanResponse = aiOutput;\n\ntry {\n  // Look for our simple tracking format\n  const trackingMatch = aiOutput.match(/KNOWLEDGE_SOURCES_USED:(.*?)END_TRACKING/s);\n  \n  if (trackingMatch && trackingMatch[1]) {\n    const trackingContent = trackingMatch[1].trim();\n    \n    // Extract sources used count\n    const sourcesUsedMatch = trackingContent.match(/KNOWLEDGE_SOURCES_USED:\\s*(\\d+)/);\n    if (sourcesUsedMatch) {\n      knowledgeData.knowledge_sources_used = parseInt(sourcesUsedMatch[1]);\n    }\n    \n    // Extract source titles\n    const sourcesMatch = trackingContent.match(/SOURCES:\\s*([^\\n]+)/);\n    if (sourcesMatch && sourcesMatch[1]) {\n      const sourcesTitles = sourcesMatch[1].split(',').map(s => s.trim()).filter(s => s);\n      knowledgeData.knowledge_sources = sourcesTitles.map((title, index) => ({\n        id: `source_${index + 1}`,\n        title: title,\n        category: \"Knowledge Base\",\n        relevance_score: 0.8,\n        used_in_response: true\n      }));\n    }\n    \n    // Extract search queries\n    const searchesMatch = trackingContent.match(/SEARCHES:\\s*([^\\n]+)/);\n    if (searchesMatch && searchesMatch[1]) {\n      knowledgeData.search_queries_made = searchesMatch[1].split(',').map(s => s.trim()).filter(s => s);\n    }\n    \n    // Remove the tracking block from the response\n    cleanResponse = aiOutput.replace(/KNOWLEDGE_SOURCES_USED:.*?END_TRACKING/s, '').trim();\n    \n    console.log(`Extracted knowledge data: ${knowledgeData.knowledge_sources_used} sources used`);\n    \n  } else {\n    console.log('No knowledge tracking found in AI response');\n  }\n  \n} catch (error) {\n  console.log('Error parsing knowledge tracking:', error.message);\n  // Keep defaults and original response\n}\n\n// Return the processed data for the workflow\nreturn {\n  // Clean response for the customer (without tracking)\n  output: cleanResponse,\n  gmail_id: $('Get a message').first().json.id,\n  thread_id: $('Get a message').first().json.threadId,\n  execution_id: $('Generate execution ID').first().json.executionId,\n  subject: $('Get a message').first().json.headers.subject,\n  to: $('Get a message').first().json.from.value[0].address,\n  \n  // Knowledge tracking data for database\n  knowledge_sources_used: knowledgeData.knowledge_sources?.length,\n  knowledge_sources: knowledgeData.knowledge_sources,\n  search_queries_made: knowledgeData.search_queries_made,\n  \n  // Additional metadata for tracking\n  has_knowledge_sources: knowledgeData.knowledge_sources?.length,\n  raw_ai_output: aiOutput // Keep original for debugging\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -848
+      ],
+      "id": "c17b2064-ef10-4a3c-8c68-af19b5559cb8",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        272
+      ],
+      "id": "3bfed46e-7f6a-4d28-8def-82bd1a03f51a",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "vy27zpbKGH02M4lA",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Listen for draft requests\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 336,
+        "width": 672
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1072,
+        -1120
+      ],
+      "typeVersion": 1,
+      "id": "f579b944-653e-4836-9211-2aa6336cbd6f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Listen for new mail\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 464,
+        "width": 1216
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1072,
+        -48
+      ],
+      "typeVersion": 1,
+      "id": "dd3c1f9a-dd55-4206-b5c6-4d2c33088c0a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Consolidate data\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 336,
+        "width": 672
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        -1136
+      ],
+      "typeVersion": 1,
+      "id": "56914501-ae93-4da8-b97b-8f0eafddea49",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Redis Public Execution Status and Email",
+        "height": 272,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        496,
+        -736
+      ],
+      "typeVersion": 1,
+      "id": "efaf8cea-5b7e-431a-83f6-f4fdac8b8d53",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## AI Agent",
+        "height": 480,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        960,
+        -944
+      ],
+      "typeVersion": 1,
+      "id": "2dbe05d3-d723-4ac8-b5ca-1f2185b12462",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Data Parsing",
+        "height": 272,
+        "width": 1200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1488,
+        -896
+      ],
+      "typeVersion": 1,
+      "id": "8ec377c8-bbcc-43f0-9d20-9f0cc7a1bb91",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Public and Cache Execution Status\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 272,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1808,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "146bfb6e-7d8d-469b-8cbc-90e82d139e26",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Public and Cache Drafts\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 272,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3040,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "460bac9c-a72d-480b-ab44-718808d488a9",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "height": 272,
+        "width": 928
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2720,
+        -896
+      ],
+      "typeVersion": 1,
+      "id": "0abd0178-b182-4a9c-be19-040375371e71",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Listen for draft send\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 336,
+        "width": 848
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1072,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "2f15466d-e526-4f28-b3e8-3fd6b379baf4",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.headers.subject }}\nBody: {{ $json.text }}",
+        "options": {
+          "systemMessage": "You are an automated email‐triage assistant. Your job is to read each incoming email (given its subject and body) and decide only whether it truly requires a human reply or can safely be ignored.\n\nFollow these rules:\n\t1.\tRespond (needsReply = true)\n\t•\tThe sender asks a direct question or requests an action.\n\t•\tIt’s from a known contact or partner and pertains to the business (e.g., meeting requests, support inquiries, approvals, follow-ups).\n\t•\tContains feedback, complaints, or urgent issues requiring attention.\n\t2.\tIgnore (needsReply = false)\n\t•\tAutomated notifications: password resets, delivery confirmations, system alerts.\n\t•\tNewsletters, marketing blasts, or bulk announcements.\n\t•\tSpam, unsolicited offers, or irrelevant promotional content.\n\nInstructions:\n\t•\tDo not draft a reply—only decide.\n\t•\tAlways return exactly one JSON object with a single boolean field: \n{ \"needsReply\": true }\n \n\nor \n{ \"needsReply\": false }"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -752,
+        -16
+      ],
+      "id": "7fd9e30a-0718-4b04-9624-767e7a3d8331",
+      "name": "Response Needed?"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "email_executions",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Gmail Trigger').item.json.id }}",
+            "gmail_id": "={{ $('Gmail Trigger').item.json.id }}",
+            "thread_id": "={{ $('Gmail Trigger').item.json.threadId }}",
+            "processed_at": "={{ new Date().toISOString() }}",
+            "created_at": "={{ new Date().toISOString() }}",
+            "updated_at": "={{ new Date().toISOString() }}",
+            "execution_status": "completed"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "gmail_id",
+              "displayName": "gmail_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "thread_id",
+              "displayName": "thread_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "execution_status",
+              "displayName": "execution_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "processed_at",
+              "displayName": "processed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -80,
+        224
+      ],
+      "id": "ef049e57-fe64-4026-b1f8-5bf59edc935b",
+      "name": "Insert Email Execution",
+      "credentials": {
+        "postgres": {
+          "id": "XzBpym3vbGD4J1h6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "exec-id-001",
+              "name": "executionId",
+              "value": "={{ new Date().getTime() }}",
+              "type": "string"
+            },
+            {
+              "id": "exec-start-001",
+              "name": "startedAt",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "gmail-id-001",
+              "name": "gmailId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "thread-id-001",
+              "name": "threadId",
+              "value": "={{ $json.threadId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "36c01698-9958-4186-8b36-3c70c0e07604",
+      "name": "Generate execution ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        288,
+        -1008
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "id",
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -448,
+        272
+      ],
+      "id": "3b48ae87-5b4c-4445-9ed0-d3c62111cbef",
+      "name": "Merge1",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($('Response Needed?').item.json.output).needsReply }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "d3aa5f2c-b947-4b9d-9aaf-3e7e8d891ab7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -288,
+        96
+      ],
+      "id": "b016781e-f7bd-4d93-8add-8a5c7aec9bd0",
+      "name": "Switch",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const encoded = Buffer.from($json.raw).toString('base64');\n\nreturn { encoded };"
+      },
+      "id": "154a8555-2cdd-4f33-b774-1344f27dae9e",
+      "name": "Convert raw to base",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/gmail/v1/users/me/drafts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"message\":{\"raw\":\"{{ $json.encoded }}\", \"threadId\": \"{{ $('Map fields for further processing1').item.json[\"threadId\"] }}\"}}",
+        "options": {}
+      },
+      "id": "b1009ddd-03cd-493a-8f96-0f5b887aa67e",
+      "name": "Add email draft to thread1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2912,
+        320
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "uFo8r405Kjkr0Aus",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a77b2d79-1e70-410c-a657-f3d618154ea1",
+              "name": "response",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "20850cac-f82c-4f02-84f0-3de31871a5b8",
+              "name": "threadId",
+              "value": "={{ $json.thread_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d270c18e-39a0-4d87-85f0-cc1ffc9c10ff",
+              "name": "to",
+              "value": "={{ $json.to }}",
+              "type": "string"
+            },
+            {
+              "id": "30acb50b-bdde-44bf-803c-76e0ae65f526",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "88914536-8c25-4877-8914-feab5e32fae3",
+              "name": "messageId",
+              "value": "={{ $json.gmail_id }}",
+              "type": "string"
+            },
+            {
+              "id": "knowledge-sources-count",
+              "name": "knowledge_sources_count",
+              "value": "={{ $json.knowledge_sources_used || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "knowledge-sources-data",
+              "name": "knowledge_sources",
+              "value": "={{ $json.knowledge_sources || [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f2908066-a84b-406c-b090-ba44226b5929",
+      "name": "Map fields for further processing1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1888,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.response }}",
+        "destinationKey": "response",
+        "options": {
+          "simpleLineBreaks": false
+        }
+      },
+      "id": "0fd74c3f-0fdf-4f2e-b12d-c3124395c4da",
+      "name": "Convert response to HTML1",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "913e9cb1-10de-4637-bf48-40272c7c7fe3",
+              "name": "raw",
+              "value": "=To: {{ $json.to }}\nSubject: {{ $json.subject }}\nContent-Type: text/html; charset=\"utf-8\"\n\n{{ $json.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "be7a1abd-59a2-46d1-9dab-89e36f7ba950",
+      "name": "Build email raw1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2384,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.threadId }}"
+      },
+      "id": "dcb8ba7d-528f-44e8-a2c3-a448a0d226be",
+      "name": "Window Buffer Memory1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6a360bef-8f34-4e7a-8998-a27e27564357",
+      "name": "Chat Memory Manager1",
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "agent": "openAiFunctionsAgent",
+        "text": "=Subject: {{ $('Gmail Trigger').item.json.subject }}\nBody: {{ $('Gmail Trigger').item.json.text }}",
+        "options": {
+          "systemMessage": "=You are a virtual customer-support specialist with access to a comprehensive knowledge base. Your job is to read each incoming email inquiry and craft a clear, concise, and professional response that fully resolves their questions using relevant company information.\n\nIMPORTANT: You have access to a knowledge search tool that can find relevant company information, policies, procedures, and documentation. Always use this tool to search for relevant information before responding.\n\nFollow these guidelines:\n\t1.\tTone & Style\n\t•\tFriendly and empathetic, yet professional.\n\t•\tMatch the customer's level of formality.\n\t•\tKeep paragraphs short and focused.\n\t2.\tStructure\n\t•\tGreeting: e.g. \"Hello [Name],\" or \"Hi there,\"\n\t•\tOpening: Acknowledge their request or issue.\n\t•\tBody:\n\t•\tDirectly address every question or concern raised.\n\t•\tProvide links, resources, or step-by-step instructions as needed.\n\t•\tIf there are multiple steps, use bullet points or numbered lists.\n\t•\tInclude specific information from the knowledge base when relevant.  \n\t•\tClosing: Offer further assistance (e.g. \"Let me know if you need anything else.\") and sign off politely.\n\t3.\tKnowledge Base Usage\n\t•\tAlways search the knowledge base for relevant information related to the customer's inquiry.\n\t•\tUse specific details, policies, and procedures from the knowledge base in your response.\n\t•\tCite sources when referencing specific company policies or procedures.\n\t4.\tCustom Instructions (if provided)\n\t•\tLook for optional custom instructions and follow them when provided.\n\nCRITICAL REQUIREMENT - KNOWLEDGE TRACKING:\nAt the end of your response, you MUST include a tracking section that starts with \"KNOWLEDGE_SOURCES_USED:\" followed by the number of sources you referenced, then \"END_TRACKING\".\n\nFormat: \nKNOWLEDGE_SOURCES_USED: [number]\nSOURCES: [source1 title], [source2 title], [etc]\nSEARCHES: [search1], [search2], [etc] \nEND_TRACKING\n\nExample:\nHello Sarah,\n\nThank you for reaching out about your return request. According to our Customer Refund Policy, you can return items within 30 days for a full refund.\n\nBest regards,\nCustomer Service\n\nKNOWLEDGE_SOURCES_USED: 2\nSOURCES: Customer Refund Policy, Return Process Guide\nSEARCHES: refund policy, return process\nEND_TRACKING"
+        }
+      },
+      "id": "f8127285-ff33-492b-a618-3e7dca5289c9",
+      "name": "AI Agent1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $json.threadId }}"
+      },
+      "id": "a7edbd0a-3de3-4f34-87d4-404ad45248fe",
+      "name": "Window Buffer Memory (check)1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.1,
+      "position": [
+        3392,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        480
+      ],
+      "id": "1ac23c62-a114-46b6-a042-4b8265cfb325",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Hx3bS2jJSoDFXCBB",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "email_drafts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "knowledge_sources_count": "={{ $('Map fields for further processing1').item.json.knowledge_sources_count || 0 }}",
+            "gmail_id": "={{ $json.message.threadId }}",
+            "draft_content": "={{ $('Convert response to HTML1').item.json.response }}",
+            "draft_id": "={{ $json.message.id }}",
+            "model_used": "gpt-4.1",
+            "id": "={{ $now }}",
+            "citations": "={{ {sources: $('Map fields for further processing1').item.json.knowledge_sources || [] } }}",
+            "generation_prompt": "={{ $('Code1').item.json.subject + ' - ' +  $('Code1').item.json.output }}",
+            "custom_prompt": "=",
+            "status": "draft_created"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "gmail_id",
+              "displayName": "gmail_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft_content",
+              "displayName": "draft_content",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model_used",
+              "displayName": "model_used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "citations",
+              "displayName": "citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_citations",
+              "displayName": "used_citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generation_prompt",
+              "displayName": "generation_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "custom_prompt",
+              "displayName": "custom_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "knowledge_sources_count",
+              "displayName": "knowledge_sources_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "accepted_at",
+              "displayName": "accepted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3104,
+        320
+      ],
+      "id": "b8fb6bd3-8c73-49c4-a3ec-7ae20731f0c6",
+      "name": "Insert rows in a table1",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "XzBpym3vbGD4J1h6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $('Generate execution ID1').item.json.executionId,\n    id: $json.executionId,\n    gmail_id: $json.gmailId,\n    thread_id: $json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Started',\n      step: 'workflow_started',\n    },\n  })\n}}"
+      },
+      "id": "00469308-2b41-4c95-9765-9d9dd0320cde",
+      "name": "🔴 Redis: Publish Started1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        672,
+        512
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID1').item.json.executionId }}",
+        "value": "={\n  \"executionId\": \"{{ $('Generate execution ID1').item.json.executionId }}\",\n  \"gmailId\": \"{{ $('Gmail Trigger').item.json.id }}\",\n  \"threadId\": \"{{ $('Gmail Trigger').item.json.threadId }}\",\n  \"status\": \"started\",\n  \"startedAt\": \"{{ $('Generate execution ID1').item.json.startedAt }}\",\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "0875f76a-3dfc-4d4f-a490-81f3c98d6ccb",
+      "name": "🔴 Redis: Cache Started1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        864,
+        512
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $json.execution_id,\n    gmail_id: $json.gmail_id,\n    thread_id: $json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Generating',\n      step: 'ai_processing',\n      knowledge_sources_used: $json.knowledge_sources_used || 0\n    }\n  })\n}}"
+      },
+      "id": "c5b9a584-3066-4654-af2c-a5fbedc0a3e1",
+      "name": "🔴 Redis: Publish AI Processing1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        640
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID1').item.json.executionId }}",
+        "value": "={\n  \"executionId\": \"{{ $('Generate execution ID1').item.json.executionId }}\",\n  \"gmailId\": \"{{ $('Gmail Trigger').item.json.id }}\",\n  \"threadId\": \"{{ $('Gmail Trigger').item.json.threadId }}\",\n  \"status\": \"ai_processing\",\n  \"startedAt\": \"{{ $('Generate execution ID1').item.json.startedAt }}\",\n  \"aiResponse\": {{ $('AI Agent1').item.json.output }},\n  \"knowledgeSourcesUsed\": {{ $('AI Agent1').item.json.knowledge_sources_used || 0 }},\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "2b4ef7a8-3e96-4a8b-b8f5-7e29bd1ef5f5",
+      "name": "🔴 Redis: Cache AI Response1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        640
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    id: $('Generate execution ID1').item.json.executionId,\n    gmail_id: $('Gmail Trigger').item.json.id,\n    thread_id: $('Gmail Trigger').item.json.threadId,\n    execution_status: 'Running',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Draft Created',\n      step: 'draft_creation',\n      knowledge_sources_count: $('Map fields for further processing1').item.json.knowledge_sources_count || 0\n    },\n  })\n}}"
+      },
+      "id": "f8924312-c86a-4848-9703-562a4daea8fc",
+      "name": "🔴 Redis: Publish Draft Created1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        656
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "publish",
+        "channel": "execution_updates",
+        "messageData": "={{\n  JSON.stringify({\n    executionId: $('Generate execution ID1').item.json.executionId,\n    id: $json.executionId,\n    gmail_id: $json.gmailId,\n    thread_id: $json.threadId,\n    execution_status: 'Completed',\n    metadata: {\n      started_at: new Date().toISOString(),\n      status: 'Completed',\n      step: 'workflow_completed',\n      knowledge_sources_count: $('Map fields for further processing1').item.json.knowledge_sources_count || 0\n    },\n  })\n}}"
+      },
+      "id": "0beee978-6aff-4089-9c31-bedd8fd30eff",
+      "name": "🔴 Redis: Publish Completed1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3424,
+        656
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=execution:{{ $('Generate execution ID1').item.json.executionId }}",
+        "value": "={\n  \"gmailId\": \"{{ $('Gmail Trigger').item.json.id }} ?? \",\n  \"threadId\": \"{{ $('Gmail Trigger').item.json.threadId }}\",\n  \"status\": \"completed\",\n  \"startedAt\": \"{{ $('Gmail Trigger').item.json.date }}\",\n  \"completedAt\": \"{{ new Date().toISOString() }}\",\n  \"draftId\": \"{{ $('Add email draft to thread1').item.json.id }}\",\n  \"knowledgeSourcesUsed\": {{ $('Map fields for further processing1').item.json.knowledge_sources_count || 0 }},\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"lastUpdate\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "cc89651d-d193-41a7-b499-03aae6e8eae4",
+      "name": "🔴 Redis: Cache Completed1",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3616,
+        656
+      ],
+      "credentials": {
+        "redis": {
+          "id": "5tt5w4cqDSiIpjRg",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the company knowledge base for relevant information. Provide a search query to find relevant policies, procedures, and documentation.",
+        "method": "POST",
+        "url": "http://host.docker.internal:3001/api/knowledge/vector-search",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/json",
+        "body": "={{ JSON.stringify({\nuser_id: 'demo-user',\nquery: 'Aventix',\nsearchType: 'hybrid',\nsimilar\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        496
+      ],
+      "id": "589fe87e-6092-4e49-b28c-b20d5dbf28b4",
+      "name": "knowledge_search1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Simple code node to extract knowledge tracking from AI response\n// Place this node after your AI Agent and before \"Map fields for further processing\"\n\nconst aiOutput = $json.output || '';\n\n// Initialize defaults\nlet knowledgeData = {\n  knowledge_sources_used: 0,\n  knowledge_sources: [],\n  search_queries_made: []\n};\n\nlet cleanResponse = aiOutput;\n\ntry {\n  // Look for our simple tracking format\n  const trackingMatch = aiOutput.match(/KNOWLEDGE_SOURCES_USED:(.*?)END_TRACKING/s);\n  \n  if (trackingMatch && trackingMatch[1]) {\n    const trackingContent = trackingMatch[1].trim();\n    \n    // Extract sources used count\n    const sourcesUsedMatch = trackingContent.match(/KNOWLEDGE_SOURCES_USED:\\s*(\\d+)/);\n    if (sourcesUsedMatch) {\n      knowledgeData.knowledge_sources_used = parseInt(sourcesUsedMatch[1]);\n    }\n    \n    // Extract source titles\n    const sourcesMatch = trackingContent.match(/SOURCES:\\s*([^\\n]+)/);\n    if (sourcesMatch && sourcesMatch[1]) {\n      const sourcesTitles = sourcesMatch[1].split(',').map(s => s.trim()).filter(s => s);\n      knowledgeData.knowledge_sources = sourcesTitles.map((title, index) => ({\n        id: `source_${index + 1}`,\n        title: title,\n        category: \"Knowledge Base\",\n        relevance_score: 0.8,\n        used_in_response: true\n      }));\n    }\n    \n    // Extract search queries\n    const searchesMatch = trackingContent.match(/SEARCHES:\\s*([^\\n]+)/);\n    if (searchesMatch && searchesMatch[1]) {\n      knowledgeData.search_queries_made = searchesMatch[1].split(',').map(s => s.trim()).filter(s => s);\n    }\n    \n    // Remove the tracking block from the response\n    cleanResponse = aiOutput.replace(/KNOWLEDGE_SOURCES_USED:.*?END_TRACKING/s, '').trim();\n    \n    console.log(`Extracted knowledge data: ${knowledgeData.knowledge_sources_used} sources used`);\n    \n  } else {\n    console.log('No knowledge tracking found in AI response');\n  }\n  \n} catch (error) {\n  console.log('Error parsing knowledge tracking:', error.message);\n  // Keep defaults and original response\n}\n\n// Return the processed data for the workflow\nreturn {\n  // Clean response for the customer (without tracking)\n  output: cleanResponse,\n  gmail_id: $('Gmail Trigger').first().json.id,\n  thread_id: $('Gmail Trigger').first().json.threadId,\n  execution_id: $('Generate execution ID1').first().json.executionId,\n  subject: $('Gmail Trigger').first().json.subject,\n  to: $('Gmail Trigger').first().json.from.value[0].address,\n  \n  // Knowledge tracking data for database\n  knowledge_sources_used: knowledgeData.knowledge_sources?.length,\n  knowledge_sources: knowledgeData.knowledge_sources,\n  search_queries_made: knowledgeData.search_queries_made,\n  \n  // Additional metadata for tracking\n  has_knowledge_sources: knowledgeData.knowledge_sources?.length,\n  raw_ai_output: aiOutput // Keep original for debugging\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        272
+      ],
+      "id": "07c495e3-d330-4906-bcd9-95804ec6d672",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "content": "## Consolidate data\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 336,
+        "width": 672
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        352,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "ac47d4fc-e38b-42ca-be22-e62fff5847f9",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Redis Public Execution Status and Email",
+        "height": 272,
+        "width": 400
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        624,
+        384
+      ],
+      "typeVersion": 1,
+      "id": "58d609f8-aaa3-4864-bdbb-5ec91179b1a2",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## AI Agent",
+        "height": 480,
+        "width": 496
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1088,
+        176
+      ],
+      "typeVersion": 1,
+      "id": "7876c596-17e3-4e06-b2ed-2f565097e2c7",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Data Parsing",
+        "height": 272,
+        "width": 1200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1616,
+        224
+      ],
+      "typeVersion": 1,
+      "id": "c7bdc46e-734a-40fb-84c7-c7f4a97e5ae4",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "## Public and Cache Execution Status\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 304,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1936,
+        528
+      ],
+      "typeVersion": 1,
+      "id": "3460d8c1-65f4-4112-b7d0-854b81724a2b",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "## Public and Cache Drafts\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+        "height": 304,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3168,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "1bd55272-1ea2-4914-99ca-117b3676544e",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "height": 272,
+        "width": 928
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2848,
+        224
+      ],
+      "typeVersion": 1,
+      "id": "01ae3a16-2a17-4b3e-a65c-76b172cb2493",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "exec-id-001",
+              "name": "executionId",
+              "value": "={{ new Date().getTime() }}",
+              "type": "string"
+            },
+            {
+              "id": "exec-start-001",
+              "name": "startedAt",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "gmail-id-001",
+              "name": "gmailId",
+              "value": "={{ $('Gmail Trigger').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "thread-id-001",
+              "name": "threadId",
+              "value": "={{ $('Gmail Trigger').item.json.threadId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f350bb1c-ada4-4656-a79b-299f20b943d2",
+      "name": "Generate execution ID1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        416,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "email_drafts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "knowledge_sources_count": "={{ $('Map fields for further processing').item.json.knowledge_sources_count || 0 }}",
+            "gmail_id": "={{ $json.message.threadId }}",
+            "draft_content": "={{ $('Convert response to HTML').item.json.response }}",
+            "draft_id": "={{ $json.message.id }}",
+            "model_used": "gpt-4.1",
+            "id": "={{ $now }}",
+            "citations": "={{ {sources: $('Map fields for further processing').item.json.knowledge_sources || [] } }}",
+            "generation_prompt": "={{ $('Code').item.json.subject + ' - ' +  $('Code').item.json.output }}",
+            "custom_prompt": "=",
+            "status": "draft_created"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "gmail_id",
+              "displayName": "gmail_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft_content",
+              "displayName": "draft_content",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft_id",
+              "displayName": "draft_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model_used",
+              "displayName": "model_used",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "citations",
+              "displayName": "citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "used_citations",
+              "displayName": "used_citations",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "array",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generation_prompt",
+              "displayName": "generation_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "custom_prompt",
+              "displayName": "custom_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "knowledge_sources_count",
+              "displayName": "knowledge_sources_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "accepted_at",
+              "displayName": "accepted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2976,
+        -832
+      ],
+      "id": "e21e74d4-9f18-4d64-b7a8-61ea4662907c",
+      "name": "Insert Draft Entry",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "XzBpym3vbGD4J1h6",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Convert raw to base64": {
+      "main": [
+        [
+          {
+            "node": "Add email draft to thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add email draft to thread": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Publish Draft Created",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert Draft Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fields for further processing": {
+      "main": [
+        [
+          {
+            "node": "Convert response to HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Cache AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert response to HTML": {
+      "main": [
+        [
+          {
+            "node": "Build email raw",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build email raw": {
+      "main": [
+        [
+          {
+            "node": "Convert raw to base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory (check)": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Response Needed?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Redis: Publish Started": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Cache Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Redis: Publish Completed": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Cache Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Generate execution ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Get a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Body": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "knowledge_search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Map fields for further processing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Publish AI Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Response Needed?",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Needed?": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Generate execution ID": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Publish Started",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Email Execution": {
+      "main": [
+        []
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Insert Email Execution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate execution ID1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert raw to base": {
+      "main": [
+        [
+          {
+            "node": "Add email draft to thread1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add email draft to thread1": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Publish Draft Created1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert rows in a table1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map fields for further processing1": {
+      "main": [
+        [
+          {
+            "node": "Convert response to HTML1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Cache AI Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert response to HTML1": {
+      "main": [
+        [
+          {
+            "node": "Build email raw1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build email raw1": {
+      "main": [
+        [
+          {
+            "node": "Convert raw to base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory (check)1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Memory Manager1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table1": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Publish Completed1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Redis: Publish Started1": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Cache Started1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Redis: Publish Completed1": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Cache Completed1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "knowledge_search1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Map fields for further processing1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Redis: Publish AI Processing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate execution ID1": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Publish Started1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Draft Entry": {
+      "main": [
+        [
+          {
+            "node": "🔴 Redis: Publish Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0153cbbd-05b9-47b6-a844-09c350c388ae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ad39ec9d7f6ca13a4f2c6a28f2ec3476ff389f704c643a045a17141162f6f77d"
+  },
+  "id": "xaV4UhtRtcH0deuG",
+  "tags": []
+}
