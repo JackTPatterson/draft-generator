@@ -205,7 +205,7 @@ export default function TemplateSelector({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Select Template</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Choose a template to generate your response
           </p>
         </div>
@@ -353,7 +353,7 @@ export default function TemplateSelector({
       </div>
 
       {/* Results Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-sm text-gray-500">
         <span>{filteredTemplates.length} templates found</span>
         {suggestedTemplates.length > 0 && (
           <Badge variant="secondary" className="text-xs">
@@ -377,7 +377,7 @@ export default function TemplateSelector({
                 className={`cursor-pointer transition-all hover:shadow-md ${
                   suggested ? 'border-blue-200 bg-blue-50/50' : ''
                 } ${
-                  isSelected ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                  isSelected ? 'ring-2 ring-[#25206b] border-[#25206b]' : ''
                 }`}
                 onClick={() => handleTemplateSelect(template)}
               >
@@ -394,7 +394,7 @@ export default function TemplateSelector({
                           </Badge>
                         )}
                         {isSelected && (
-                          <Check className="w-4 h-4 text-blue-600" />
+                          <Check className="w-4 h-4 " />
                         )}
                       </CardTitle>
                       <CardDescription className="mt-1">
@@ -435,7 +435,7 @@ export default function TemplateSelector({
                   {/* Show matching labels for suggested templates */}
                   {template.matching_labels && template.matching_labels.length > 0 && (
                     <div className="mt-2 pt-2 border-t">
-                      <div className="text-xs text-gray-600 mb-1">Matching labels:</div>
+                      <div className="text-xs text-gray-500 mb-1">Matching labels:</div>
                       <div className="flex flex-wrap gap-1">
                         {template.matching_labels.map(label => (
                           <Badge 
@@ -467,7 +467,7 @@ export default function TemplateSelector({
             placeholder="Add specific instructions for how the AI should modify this template..."
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            className="w-full min-h-[80px] p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full min-h-[80px] p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-[#25206b] focus:border-[#25206b]"
           />
         </div>
       )}

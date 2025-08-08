@@ -92,7 +92,7 @@ export default function CitationsPanel({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
+            <BookOpen className="w-5 h-5 " />
             <CardTitle className="text-lg">Knowledge Sources</CardTitle>
             <Badge variant="secondary" className="ml-2">
               {citations.length} source{citations.length !== 1 ? 's' : ''}
@@ -111,7 +111,7 @@ export default function CitationsPanel({
         <CardDescription>
           Sources referenced in this email draft
           {usedCitations.length > 0 && (
-            <span className="ml-2 text-green-600 font-medium">
+            <span className="ml-2  font-medium">
               ({usedCitations.length} cited)
             </span>
           )}
@@ -132,7 +132,7 @@ export default function CitationsPanel({
                       className={`p-3 rounded-lg border ${
                         isUsed 
                           ? 'bg-green-50 border-green-200' 
-                          : 'bg-gray-50 border-gray-200'
+                          : ' border-gray-200'
                       } transition-colors`}
                     >
                       <div className="flex items-start justify-between">
@@ -167,7 +167,7 @@ export default function CitationsPanel({
                           </div>
 
                           {citation.section && (
-                            <div className="text-xs text-gray-600">
+                            <div className="text-xs text-gray-500">
                               Section: {citation.section}
                             </div>
                           )}
@@ -195,7 +195,7 @@ export default function CitationsPanel({
 
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="space-y-2 text-xs text-gray-600">
+                          <div className="space-y-2 text-xs text-gray-500">
                             <div><strong>Type:</strong> {citation.type === 'document' ? 'Full Document' : 'Content Section'}</div>
                             <div><strong>Relevance:</strong> {(citation.relevanceScore * 100).toFixed(1)}%</div>
                             {citation.type === 'chunk' && citation.section && (

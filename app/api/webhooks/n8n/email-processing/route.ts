@@ -16,14 +16,14 @@ export async function POST(request: NextRequest) {
       body_html,
       received_at,
       labels = [],
-      user_id = 'demo-user',
+      user_id, // Required from webhook payload
       webhook_source = 'n8n',
       processing_mode = 'auto' // 'auto', 'suggest_only', 'manual'
     } = body
 
-    if (!gmail_id) {
+    if (!gmail_id || !user_id) {
       return NextResponse.json(
-        { error: 'gmail_id is required' },
+        { error: 'gmail_id and user_id are required' },
         { status: 400 }
       )
     }

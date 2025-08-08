@@ -230,18 +230,18 @@ export default function DraftListSheet({
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-3 gap-4 p-4  rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{drafts.length}</div>
-              <div className="text-xs text-gray-600">Total Drafts</div>
+              <div className="text-2xl font-bold ">{drafts.length}</div>
+              <div className="text-xs text-gray-500">Total Drafts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">{aiEnhancedCount}</div>
-              <div className="text-xs text-gray-600">AI Enhanced</div>
+              <div className="text-xs text-gray-500">AI Enhanced</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{citedCount}</div>
-              <div className="text-xs text-gray-600">With Sources</div>
+              <div className="text-2xl font-bold ">{citedCount}</div>
+              <div className="text-xs text-gray-500">With Sources</div>
             </div>
           </div>
 
@@ -307,7 +307,7 @@ export default function DraftListSheet({
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="font-medium text-gray-900 mb-2">No drafts found</h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-500 mb-4">
                 {searchTerm ? 'Try adjusting your search terms' : 'Create your first email draft to get started'}
               </p>
               {!searchTerm && (

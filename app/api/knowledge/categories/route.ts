@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/database'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId') || 'demo-user'
+  const userId = await getCurrentUserId(request)
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
 
   try {
     const client = await pool.connect()
@@ -30,6 +34,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getCurrentUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    
     const body = await request.json()
     const {
       name,
@@ -38,8 +48,7 @@ export async function POST(request: NextRequest) {
       color = '#6B7280',
       ai_prompt_template,
       extraction_rules,
-      sort_order = 0,
-      userId = 'demo-user'
+      sort_order = 0
     } = body
 
     if (!name) {

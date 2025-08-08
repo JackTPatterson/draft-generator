@@ -28,6 +28,13 @@ export interface EmailDraft {
   used_citations?: string[];
   knowledge_sources_count?: number;
   status?: 'draft' | 'accepted' | 'rejected';
+  template_used?: {
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    tone: string;
+  };
 }
 
 export interface EmailExecution {
@@ -72,13 +79,40 @@ export async function getEmailExecutions(): Promise<EmailExecution[]> {
         ee.created_at,
         ee.updated_at,
         COALESCE(
-                JSONB_AGG( TO_JSONB(ed) ORDER BY ed.created_at DESC )
-                FILTER ( WHERE ed.gmail_id IS NOT NULL ),
+                JSONB_AGG(
+                jsonb_build_object(
+                    'id', ed.id,
+                    'gmail_id', ed.gmail_id,
+                    'created_at', ed.created_at,
+                    'model_used', ed.model_used,
+                    'draft_content', ed.draft_content,
+                    'draft_id', ed.draft_id,
+                    'citations', ed.citations,
+                    'used_citations', ed.used_citations,
+                    'knowledge_sources_count', ed.knowledge_sources_count,
+                    'status', ed.status,
+                    'template_used',
+                    CASE
+                      WHEN et.id IS NOT NULL THEN jsonb_build_object(
+                          'id', et.id,
+                          'name', et.name,
+                          'category', et.category,
+                          'type', et.type,
+                          'tone', et.tone
+                                                  )
+                      ELSE NULL
+                      END
+                )
+                ORDER BY ed.created_at DESC
+                         )
+                FILTER (WHERE ed.gmail_id IS NOT NULL),
                 '[]'
         ) AS drafts
       FROM email_executions AS ee
-             LEFT JOIN email_drafts     AS ed
+             LEFT JOIN email_drafts AS ed
                        ON ed.gmail_id = ee.gmail_id
+             LEFT JOIN email_templates AS et
+                       ON ed.template_id = et.id
       GROUP BY
         ee.id,
         ee.gmail_id,
@@ -90,12 +124,13 @@ export async function getEmailExecutions(): Promise<EmailExecution[]> {
       ORDER BY
         ee.created_at DESC
       LIMIT 20
-      `)
+    `)
     return result.rows
   } finally {
     client.release()
   }
 }
+
 
 export async function getEmailsWithExecutions(): Promise<EmailExecution[]> {
   const client = await pool.connect()
@@ -109,13 +144,40 @@ export async function getEmailsWithExecutions(): Promise<EmailExecution[]> {
                                          ee.created_at,
                                          ee.updated_at,
                                          COALESCE(
-                                                 JSONB_AGG(TO_JSONB(ed) ORDER BY ed.created_at DESC)
+                                                 JSONB_AGG(
+                                                 jsonb_build_object(
+                                                     'id', ed.id,
+                                                     'gmail_id', ed.gmail_id,
+                                                     'created_at', ed.created_at,
+                                                     'model_used', ed.model_used,
+                                                     'draft_content', ed.draft_content,
+                                                     'draft_id', ed.draft_id,
+                                                     'citations', ed.citations,
+                                                     'used_citations', ed.used_citations,
+                                                     'knowledge_sources_count', ed.knowledge_sources_count,
+                                                     'status', ed.status,
+                                                     'template_used',
+                                                     CASE
+                                                       WHEN et.id IS NOT NULL THEN jsonb_build_object(
+                                                           'id', et.id,
+                                                           'name', et.name,
+                                                           'category', et.category,
+                                                           'type', et.type,
+                                                           'tone', et.tone
+                                                                                   )
+                                                       ELSE NULL
+                                                       END
+                                                 )
+                                                 ORDER BY ed.created_at DESC
+                                                          )
                                                  FILTER (WHERE ed.gmail_id IS NOT NULL),
                                                  '[]'
                                          ) AS drafts
                                        FROM email_executions AS ee
                                               LEFT JOIN email_drafts AS ed
                                                         ON ed.gmail_id = ee.gmail_id
+                                              LEFT JOIN email_templates AS et
+                                                        ON ed.template_used = et.id::text
                                        GROUP BY
                                          ee.id,
                                          ee.gmail_id,
@@ -126,34 +188,12 @@ export async function getEmailsWithExecutions(): Promise<EmailExecution[]> {
                                          ee.updated_at
                                        ORDER BY
                                          ee.created_at DESC
-                                       LIMIT 20;
-    `)
+                                       LIMIT 20`)
 
-    console.log('Emails with executions:', result.rows)
 
     return result.rows
   } finally {
     client.release()
-  }
-}
-
-function formatTime(date: Date | null): string {
-  if (!date) return 'Unknown'
-  
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  
-  if (hours < 24) {
-    if (hours < 1) {
-      const minutes = Math.floor(diff / (1000 * 60))
-      return `${minutes}m ago`
-    }
-    return `${hours}h ago`
-  } else if (hours < 48) {
-    return 'Yesterday'
-  } else {
-    return date.toLocaleDateString()
   }
 }
 

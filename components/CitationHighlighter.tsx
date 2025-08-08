@@ -105,7 +105,7 @@ export default function CitationHighlighter({
                     <div className="space-y-2">
                       <div className="font-medium text-sm">{citation.title}</div>
                       {citation.category && (
-                        <div className="text-xs text-gray-600">{citation.category}</div>
+                        <div className="text-xs text-gray-500">{citation.category}</div>
                       )}
                       <div className="text-xs text-gray-700">
                         {citation.snippet || citation.text}

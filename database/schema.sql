@@ -91,6 +91,16 @@ CREATE TABLE emails (
 -- EMAIL TEMPLATES
 -- ================================
 
+-- Create enum for template types
+CREATE TYPE template_type AS ENUM (
+    'reply', 'forward', 'new_email', 'auto_response', 'follow_up', 'meeting_request'
+);
+
+-- Create enum for template tones
+CREATE TYPE template_tone AS ENUM (
+    'professional', 'friendly', 'casual', 'formal', 'enthusiastic', 'apologetic', 'urgent'
+);
+
 CREATE TABLE email_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -98,12 +108,22 @@ CREATE TABLE email_templates (
     -- Template info
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    category VARCHAR(100), -- e.g., 'Finance', 'Business Development', 'General'
     type template_type DEFAULT 'reply',
+    tone template_tone DEFAULT 'professional',
     
     -- Content
     subject_template TEXT,
-    body_template TEXT,
-    variables JSONB, -- Template variables and their types
+    body_template TEXT NOT NULL,
+    
+    -- AI-specific fields
+    template_ai_instructions TEXT[] DEFAULT '{}', -- Array of AI instructions for template variables (instructions1, instructions2, etc.)
+    ai_instructions TEXT
+    -- Variable management
+    variables JSONB DEFAULT '[]', -- Array of variable definitions with metadata
+    
+    -- Tagging and organization
+    tags TEXT[] DEFAULT '{}', -- Array of tags for filtering/searching
     
     -- Usage tracking
     usage_count INTEGER DEFAULT 0,
@@ -114,7 +134,10 @@ CREATE TABLE email_templates (
     is_public BOOLEAN DEFAULT FALSE, -- For shared templates
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Ensure template name is unique per user
+    UNIQUE(user_id, name)
 );
 
 -- ================================

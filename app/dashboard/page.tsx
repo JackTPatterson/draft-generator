@@ -5,35 +5,11 @@ import useSWR from 'swr'
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { getWebSocketClient } from "@/lib/websocket-client"
+import { AuthGuard } from "@/components/AuthGuard"
+import { UserMenuWithGmail } from "@/components/UserMenuWithGmail"
+import { useSession } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth-client"
 
-interface EmailExecution {
-  id: string
-  gmail_id: string
-  thread_id: string
-  execution_status: string
-  processed_at: Date | null
-  created_at: Date
-  updated_at: Date
-  drafts: EmailDraft[]
-}
-
-interface EmailWithExecution {
-  id: number
-  gmail_id?: string
-  thread_id?: string
-  from: string
-  email: string
-  subject: string
-  preview: string
-  time: string
-  important: boolean
-  unread: boolean
-  recipients: string[]
-  cc: string[]
-  content: string
-  attachments: Array<{ name: string; size: string }>
-  execution?: EmailExecution
-}
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -53,7 +29,7 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
-  Download, ArrowDownIcon, ChevronDown, Loader2,
+  Download, ArrowDownIcon, ChevronDown, Loader2, TagIcon,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -87,13 +63,63 @@ import {
   SheetTitle,
   SheetTrigger
 } from "@/components/ui/sheet";
-import {EmailDraft} from "@/lib/database";
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger} from "@/components/ui/accordion";
 import {SafeHtmlRenderer} from "@/components/SafeHtmlRenderer";
 import Spinner from "@/components/Spinner";
 import SourceBadges from "@/components/SourceBadges";
 import TemplateSelector from "@/components/TemplateSelector";
 import {Progress} from "@/components/ui/progress";
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip";
+
+interface EmailDraft {
+  id: number;
+  gmail_id: string;
+  created_at: string;
+  model_used: string | null;
+  draft_content: string;
+  draft_id: string;
+  citations?: {sources: Array<{title: string}> }
+  used_citations?: string[];
+  knowledge_sources_count?: number;
+  status?: 'draft' | 'accepted' | 'rejected';
+  template_used?: {
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    tone: string;
+  };
+}
+
+interface EmailExecution {
+  id: string
+  gmail_id: string
+  thread_id: string
+  execution_status: string
+  processed_at: Date | null
+  created_at: Date
+  updated_at: Date
+  drafts: EmailDraft[]
+}
+
+interface EmailWithExecution {
+  id: number
+  gmail_id?: string
+  thread_id?: string
+  from: string
+  email: string
+  subject: string
+  preview: string
+  time: string
+  important: boolean
+  unread: boolean
+  recipients: string[]
+  cc: string[]
+  content: string
+  attachments: Array<{ name: string; size: string }>
+  execution?: EmailExecution
+  
+}
 
 
 export default function Dashboard() {
@@ -109,6 +135,11 @@ export default function Dashboard() {
   const [customPrompt, setCustomPrompt] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+
+  // Session and subscription data
+  const { data: session } = useSession()
+  const [subscription, setSubscription] = useState<any>(null)
+  const [emailStats, setEmailStats] = useState<any>(null)
 
   // SWR fetcher function
   const fetcher = async (url: string) => {
@@ -139,19 +170,54 @@ export default function Dashboard() {
     }
   )
 
-  console.log(emails)
 
   // Function to refresh emails (for manual refresh)
   const refreshEmails = useCallback(() => {
     mutate()
   }, [mutate])
 
+  // Fetch subscription data
+  const fetchSubscription = useCallback(async () => {
+    if (!session?.user?.id) return
+    
+    try {
+      const subs = await authClient.subscription.list()
+      if (subs && subs.length > 0) {
+        setSubscription(subs[0])
+      }
+    } catch (error) {
+      console.error('Failed to load subscription:', error)
+    }
+  }, [session?.user?.id])
+
+  // Fetch email stats
+  const fetchEmailStats = useCallback(async () => {
+    if (!session?.user?.id) return
+    
+    try {
+      const response = await fetch('/api/email-stats')
+      if (response.ok) {
+        const data = await response.json()
+        setEmailStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to load email stats:', error)
+    }
+  }, [session?.user?.id])
+
+  // Load subscription and stats data
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchSubscription()
+      fetchEmailStats()
+    }
+  }, [session?.user?.id, fetchSubscription, fetchEmailStats])
+
   // WebSocket setup for real-time updates
   useEffect(() => {
     const wsClient = getWebSocketClient({
       onExecutionUpdate: async (update) => {
-        console.log('Received execution update:', update)
-        
+
         // Update the specific email execution status
         // Handle both direct updates and Redis message wrapper format
         // Extract the actual execution update data, handling message wrapper
@@ -167,8 +233,7 @@ export default function Dashboard() {
         
         if (existingEmail) {
           // Update existing email execution status
-          console.log('Updating existing email execution status')
-          mutate((currentEmails: EmailWithExecution[] = []) => 
+          mutate((currentEmails: EmailWithExecution[] = []) =>
             currentEmails.map(email => {
               // Match by execution id, gmail_id, or thread_id
               const matches = email.execution?.id === executionUpdate.id ||
@@ -201,13 +266,11 @@ export default function Dashboard() {
           )
         } else if (executionUpdate.gmail_id) {
           // Fetch new email by gmail_id and add to list
-          console.log('Fetching new email for gmail_id:', executionUpdate.gmail_id)
           try {
             const response = await fetch(`/api/gmail/${executionUpdate.gmail_id}`)
             if (response.ok) {
               const newEmail = await response.json()
-              console.log('Successfully fetched new email:', newEmail.subject)
-              
+
               // Add execution info to the new email
               newEmail.execution = {
                 id: executionUpdate.id,
@@ -255,6 +318,9 @@ export default function Dashboard() {
           
           // Refresh email data to get the latest drafts
           mutate()
+          
+          // Refresh email stats to update usage counter
+          fetchEmailStats()
           
           // Show completion notification and set active accordion to newest draft
           if (executionUpdate.execution_status === 'completed') {
@@ -312,7 +378,7 @@ export default function Dashboard() {
     return () => {
       wsClient.disconnect()
     }
-  }, [mutate, refreshEmails, emails, selectedEmail, pendingDraftId])
+  }, [mutate, refreshEmails, emails, selectedEmail, pendingDraftId, fetchEmailStats])
 
   // Clear pendingDraftId when new drafts are added to the current email
   useEffect(() => {
@@ -334,32 +400,28 @@ export default function Dashboard() {
     }
   }, [emails, selectedEmail, pendingDraftId])
 
-  const generateDraft = async () => {
-    setShowDraft(true)
-    setDraftContent("Generating AI response...")
+  // Calculate usage progress based on subscription limits
+  const getUsageProgress = () => {
+    if (!emailStats || !subscription) {
+      return { processed: 0, limit: 500, percentage: 0, planName: 'Free' }
+    }
 
-    // Simulate AI generation
-    setTimeout(() => {
-      setDraftContent(`Hi Finance Team,
+    const planLimits = {
+      basic: 500,
+      pro: 5000,
+      enterprise: 999999, // Unlimited
+      free: 5 // Default free limit
+    }
 
-Thank you for the comprehensive budget review and the detailed breakdown of the July campaign adjustments.
+    const planName = subscription.planName || 'free'
+    const limit = planLimits[planName as keyof typeof planLimits] || planLimits.free
+    const processed = emailStats.summary?.total_emails_processed || 0
+    const percentage = Math.min(Math.round((processed / limit) * 100), 100)
 
-I've reviewed the proposed changes and they align well with our Q3 growth objectives. The strategic shift toward influencer partnerships in Tier 2 cities is particularly promising given our recent market research.
-
-A few thoughts on your questions:
-
-1. **Distribution Alignment**: The current allocation strongly supports our Q3 objectives, especially the increased focus on micro-creators which should improve our cost-per-acquisition metrics.
-
-2. **Risk Assessment**: The 96% spend utilization looks healthy. My only concern is ensuring we have adequate buffer for creative testing iterations - perhaps we could reserve 2-3% specifically for rapid A/B testing pivots.
-
-3. **Go-ahead**: I'm comfortable moving forward with this budget structure. Let's schedule that sync for Thursday morning to finalize any last-minute adjustments before the leadership presentation.
-
-I'll review the attached documents in detail and provide any additional feedback by end of day.
-
-Best regards,
-Faris`)
-    }, 2000)
+    return { processed, limit, percentage, planName }
   }
+
+  const usageData = getUsageProgress()
 
   const handleTemplateSelect = async (template: any, customPrompt?: string) => {
     const newDraftId = `pending-${Date.now()}`
@@ -427,19 +489,20 @@ Faris`)
         setPendingDraftId(null)
         setDraftGenerationStatus('')
         setIsDraftGenerating(false)
-      }, 3000)
+      }, 3001)
     }
   }
 
   const currentEmail = emails[selectedEmail]
   return (
-    <div className="h-screen flex bg-[#f7f7f7]">
+    <AuthGuard>
+      <div className="h-screen flex">
       {/* Sidebar */}
       <div className="min-w-[250px]  border-r border-gray-200 flex flex-col  bg-muted">
         {/* Logo */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8  rounded-lg flex items-center justify-center">
               <Mail className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900">Fluxyn</span>
@@ -467,17 +530,24 @@ Faris`)
             </Link>
             <Link
               href="/templates"
-              className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-gray-100"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-white"
             >
               <FileText className="w-4 h-4" strokeWidth={2.3}/>
               <span className="text-sm">Templates</span>
             </Link>
             <Link
               href="/knowledge"
-              className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-gray-100"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-white"
             >
               <Brain className="w-4 h-4" strokeWidth={2.3} />
               <span className="text-sm">Knowledge Base</span>
+            </Link>
+            <Link
+              href="/labels"
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-white"
+            >
+              <TagIcon className="w-4 h-4" strokeWidth={2.3}/>
+              <span className="text-sm">Labels</span>
             </Link>
           </div>
         </nav>
@@ -486,54 +556,40 @@ Faris`)
 
         <div className="p-4 space-y-1">
           <div className={'flex items-center space-x-3 justify-between'}>
-            <p className={'text-sm'}>5 of 5 processed</p>
-            <button className={'text-[10px] bg-primary px-2 py-1 rounded-md text-white'}>Upgrade</button>
+            <p className={'text-sm'}>
+              {usageData.limit >= 999999 
+                ? `${usageData.processed} processed` 
+                : `${usageData.processed} of ${usageData.limit} processed`
+              }
+            </p>
+            {usageData.planName === 'free' || usageData.planName === 'basic' ? (
+              <button 
+                onClick={() => window.location.href = '/pricing'}
+                className={'text-[10px] bg-primary px-2 py-1 rounded-md text-white hover:bg-primary/90 transition-colors'}
+              >
+                Upgrade
+              </button>
+            ) : null}
           </div>
-          <Progress value={100}/>
-        </div>
-        <div className="p-4 border-t border-gray-200">
-          <Link
-            href="/settings"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg  hover:bg-gray-100"
-          >
-            <Settings className="w-4 h-4" strokeWidth={2.3}/>
-            <span className="text-sm">Settings</span>
-          </Link>
+          <Progress value={usageData.percentage}/>
         </div>
 
-        {/* Company Profile */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">JC</span>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-900">Jo Creative Inc.</div>
-              <div className="text-xs text-gray-500">39 members</div>
-            </div>
-          </div>
+        {/* User Menu */}
+        <div className="p-4 border-t border-gray-300">
+          <UserMenuWithGmail />
         </div>
       </div>
 
       {/* Email List */}
-      <div className={'flex flex-1 m-2 border-gray-200 rounded-r-xl border'}>
-        <div className="w-80 bg-white border-r border-gray-200 rounded-l-xl">
-          <div className="px-4 py-2 pb-[11px] border-b border-gray-200">
+      <div className={'flex flex-1 border-gray-200 rounded-r-xl border'}>
+        <div className="w-80 border-r  rounded-l-xl">
+          <div className="px-4 py-2 pb-[11px] border-b ">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <h2 className="text-lg font-semibold text-gray-900">Inbox</h2>
                 <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} 
                      title={wsConnected ? 'Real-time updates connected' : 'Real-time updates disconnected'} 
                 />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm">
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-gray-500">1 of {emails?.length || 0}</span>
-                <Button variant="ghost" size="sm">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
               </div>
             </div>
           </div>
@@ -563,7 +619,7 @@ Faris`)
                 emails.map((email, index) => (
                     <div
                         key={email?.id}
-                        className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                        className={`p-4 border-b border-gray-100 cursor-pointer hover: ${
                             selectedEmail === index ? "bg-blue-50 border-l-4 border-l-blue-600" : ""
                         }`}
                         onClick={() => setSelectedEmail(index)}
@@ -597,9 +653,9 @@ Faris`)
                       </div>
 
                       <h3 className="text-sm font-medium text-gray-900 mb-1">{email?.subject?.length > 0 ? email?.subject : "No Subject"}</h3>
-                      <p className="text-xs text-gray-600 line-clamp-2">{email?.preview}</p>
+                      <p className="text-xs text-gray-500 line-clamp-2">{email?.preview}</p>
 
-                      {email?.unread && <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>}
+                      {email?.unread && <div className="w-2 h-2  rounded-full mt-2"></div>}
                     </div>
                 ))
             )}
@@ -609,7 +665,7 @@ Faris`)
         {/* Email Content */}
         <div className="flex-1 flex flex-col rounded-r-xl">
           {/* Email Header */}
-          <div className="p-6 border-b border-gray-200 bg-white">
+          <div className="p-6 border-b border-gray-200 ">
             <div className={'flex items-center justify-between flex-row-reverse'}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
@@ -725,7 +781,7 @@ Faris`)
                                           setPendingDraftId(null)
                                           setDraftGenerationStatus('')
                                           setIsDraftGenerating(false)
-                                        }, 3000)
+                                        }, 3001)
                                       }
                                     }}
                                     disabled={isDraftGenerating}
@@ -763,11 +819,11 @@ Faris`)
                                   {/* Status indicator */}
                                   <div className="flex items-center space-x-2 mb-4">
                                     <div className="flex space-x-1">
-                                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
                                     </div>
-                                    <p className="text-sm text-gray-600 font-medium">
+                                    <p className="text-sm text-gray-500 font-medium">
                                       {draftGenerationStatus || 'AI is crafting your response...'}
                                     </p>
                                   </div>
@@ -820,7 +876,6 @@ Faris`)
                             .slice()
                             .reverse()
                             .map((draft, i)=> {
-                              console.log({draft})
                             return <AccordionItem key={`draft-${draft.id || i}`} value={`item-${i}`}>
                               <AccordionTrigger>
                                 <div className={'space-x-2 flex items-center w-full justify-between mr-4'}>
@@ -895,6 +950,19 @@ Faris`)
                                       return <Badge>{s.title}</Badge>
                                   })}
                                 </div>
+                                
+                                {/* Template Information */}
+                                {draft.template_used && (
+                                  <div className={'flex space-x-2 items-center justify-between w-full'}>
+                                    <p>Template: </p>
+                                    <div className="flex space-x-2">
+                                          <Badge variant="outline">
+                                            {draft.template_used.name}
+                                          </Badge>
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 <hr/>
                                 <p>
                                   <SafeHtmlRenderer
@@ -933,6 +1001,7 @@ Faris`)
                           }
 
                           // Optionally refetch or update state
+                          refreshEmails()
                           toast.success('Email deleted successfully!')
                         } catch (error) {
                           console.error('Error deleting email:', error)
@@ -986,7 +1055,7 @@ Faris`)
               <div>
                 <h1 className="text-xl font-semibold text-gray-900 mb-2">⭐ {currentEmail?.subject?.length > 0 ? currentEmail?.subject : "No Subject"}</h1>
 
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <div className="flex items-center space-x-2">
                     <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                       <span className="text-white text-sm font-medium">{currentEmail?.from?.charAt(0)}{currentEmail?.from?.split(" ")[1]?.charAt(0)}</span>
@@ -1004,7 +1073,7 @@ Faris`)
           </div>
 
           {/* Email Body */}
-          <div className="flex-1 overflow-y-auto p-6 bg-white break-words">
+          <div className="flex-1 overflow-y-auto p-6 bg-background break-words">
             <div className="max-w-4xl w-full">
               <div className="prose prose-sm max-w-none w-full break-words">
                 <div className="whitespace-pre-wrap break-words text-gray-800 leading-relaxed break-all overflow-x-auto">
@@ -1071,5 +1140,6 @@ Faris`)
         </div>
       )}
     </div>
+    </AuthGuard>
   )
 }

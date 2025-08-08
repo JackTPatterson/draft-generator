@@ -26,6 +26,7 @@ export async function GET(
           et.subject_template,
           et.body_template,
           et.ai_instructions,
+          et.template_ai_instructions,
           et.variables,
           et.tags,
           et.usage_count,
@@ -108,6 +109,7 @@ export async function GET(
             et.subject_template,
             et.body_template,
             et.ai_instructions,
+          et.template_ai_instructions,
             et.variables,
             tla.priority_score,
             el.name as label_name

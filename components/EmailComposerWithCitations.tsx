@@ -54,7 +54,6 @@ export default function EmailComposerWithCitations({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'demo-user',
           emailContent: content,
           subject: subject,
           templateId: templateId,

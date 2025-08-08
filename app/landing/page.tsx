@@ -46,7 +46,7 @@ export default function LandingPage() {
             Ensuring Accessibility For Everyone
           </p>
           
-          <button className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full text-lg transition-colors mb-4">
+          <button className="px-8 py-4  hover: text-white font-medium rounded-full text-lg transition-colors mb-4">
             Our Pricing
           </button>
           

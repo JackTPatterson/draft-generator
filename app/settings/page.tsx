@@ -1,11 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import { AuthGuard } from "@/components/AuthGuard"
+import { useSession, signIn } from "@/lib/auth-client"
+import { SubscriptionManager } from "@/components/SubscriptionManager"
+import { EmailMonitoringDashboard } from "@/components/EmailMonitoringDashboard"
+import { GmailEmailMonitorConnection } from "@/components/GmailEmailMonitorConnection"
 import {
   SettingsIcon,
   Mail,
@@ -18,10 +23,15 @@ import {
   CheckCircle,
   AlertCircle,
   Save,
+  RefreshCw,
+  Loader2,
+  CreditCard, ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 export default function Settings() {
+  const { data: session } = useSession()
   const [settings, setSettings] = useState({
     emailMonitoring: true,
     autoDrafting: true,
@@ -33,238 +43,376 @@ export default function Settings() {
     responseDelay: "30",
   })
 
-  const [connectedAccounts] = useState([
-    {
-      provider: "Gmail",
-      email: "faris@jocreative.com",
-      status: "connected",
-      lastSync: "2 minutes ago",
-    },
-    {
-      provider: "Outlook",
-      email: "faris@company.com",
-      status: "disconnected",
-      lastSync: "Never",
-    },
-  ])
+  // Email monitoring configuration state
+  const [monitorConfig, setMonitorConfig] = useState({
+    webhookUrl: "",
+    checkInterval: 5,
+    maxEmailsPerCheck: 50,
+    enableFilters: false,
+    filterKeywords: "",
+    excludeKeywords: "",
+    onlyUnread: true,
+    includeSpam: false,
+    includeTrash: false,
+    webhookSecret: "",
+    retryCount: 3,
+    retryDelay: 300, // seconds
+  })
+  
+  const [savingConfig, setSavingConfig] = useState(false)
+
+  // Gmail connection now handled by GmailEmailMonitorConnection component
 
   const handleSettingChange = (key: string, value: boolean | string) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handleSaveSettings = () => {
-    // Simulate saving settings
-    console.log("Saving settings:", settings)
+  const handleMonitorConfigChange = (key: string, value: boolean | string | number) => {
+    setMonitorConfig((prev) => ({ ...prev, [key]: value }))
   }
 
-  const testN8nConnection = async () => {
-    // Simulate n8n connection test
-    console.log("Testing n8n connection...")
+  const handleSaveMonitorConfig = async () => {
+    try {
+      setSavingConfig(true)
+      
+      // For now, save configuration to localStorage for demonstration
+      // In production, this would call the actual API endpoint
+      localStorage.setItem('emailMonitorConfig', JSON.stringify(monitorConfig))
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      console.log('Monitoring configuration saved successfully:', monitorConfig)
+      
+      // TODO: Replace with actual API call when backend is ready:
+      // const response = await fetch('/api/gmail/email-monitor', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     action: 'update_config',
+      //     config: monitorConfig
+      //   })
+      // })
+      
+    } catch (error) {
+      console.error('Error saving monitoring configuration:', error)
+    } finally {
+      setSavingConfig(false)
+    }
   }
+
+  // Gmail connection functions moved to GmailEmailMonitorConnection component
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Inbox
-                </Button>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-white" />
+      <AuthGuard>
+        <div className="min-h-screen">
+          {/* Sticky App Bar */}
+          <header className="sticky top-0 z-40 backdrop-blur border-b border-gray-200">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="flex h-14 sm:h-16 items-center justify-between">
+                <div className="min-w-0 flex items-center gap-3 sm:gap-4">
+                  <Link href="/dashboard" className="shrink-0">
+                    <Button variant="ghost" size="sm" className="px-2 sm:px-3">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      <span className="hidden xs:inline">Back to Inbox</span>
+                      <span className="xs:hidden">Back</span>
+                    </Button>
+                  </Link>
+
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg ">
+                      <Mail className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="truncate text-base sm:text-xl font-bold text-gray-900">
+                Fluxyn
+              </span>
+                  </div>
                 </div>
-                <span className="text-xl font-bold text-gray-900">Fluxyn</span>
               </div>
             </div>
-            <Button onClick={handleSaveSettings}>
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </div>
+          </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-2">
-            <SettingsIcon className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          </div>
-          <p className="text-gray-600">Configure your email automation and integration preferences</p>
-        </div>
+          {/* Page Content */}
+          <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            {/* Page Header */}
+            <div className="mb-6 sm:mb-8">
+              <div className="mb-2 flex items-center gap-2 sm:gap-3">
+                <h1 className="text-2xl sm:text-3xl text-gray-900 font-serif">Settings</h1>
+              </div>
+              <p className="text-xs sm:text-[14px] text-gray-500">
+                Configure your email automation and integration preferences
+              </p>
+            </div>
 
-        <div className="space-y-8">
-          {/* Connected Accounts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="w-5 h-5" />
-                <span>Connected Accounts</span>
-              </CardTitle>
-              <CardDescription>Manage your email account connections</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {connectedAccounts.map((account, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-blue-600" />
+            {/* Cards */}
+            <div className="grid grid-cols-1 gap-6 lg:gap-8">
+              {/* Connected Accounts */}
+              <Card className={'border-none shadow-none'}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>Connected Accounts</span>
+                  </CardTitle>
+                  <CardDescription>Manage your email account connections</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GmailEmailMonitorConnection />
+
+                  {/* Outlook - Coming Soon */}
+                  <div className="flex items-center justify-between rounded-xl border-gray-400 border p-4 opacity-60">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                        <Mail className="h-5 w-5 " />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900">Outlook</div>
+                        <div className="text-sm text-gray-500">Coming soon</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{account.provider}</div>
-                      <div className="text-sm text-gray-500">{account.email}</div>
-                      <div className="text-xs text-gray-400">Last sync: {account.lastSync}</div>
+                    <Badge variant="secondary" className="shrink-0">
+                      <AlertCircle className="mr-1 h-3 w-3" />
+                      Coming Soon
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Email Monitoring Service */}
+              <Card className="rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    <span>Email Monitoring Service</span>
+                  </CardTitle>
+                  <CardDescription>Configure automated email monitoring for multiple users</CardDescription>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <EmailMonitoringDashboard />
+                </CardContent>
+              </Card>
+
+              {/* Monitoring Configuration */}
+              <Card className="rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>Monitoring Configuration</span>
+                  </CardTitle>
+                  <CardDescription>Configure email monitoring parameters and filters</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+
+
+                  {/* Email Filters */}
+                  <section className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-gray-900">Email Filters</h4>
+                      <Switch
+                          checked={monitorConfig.enableFilters}
+                          onCheckedChange={(checked) => handleMonitorConfigChange("enableFilters", checked)}
+                      />
+                    </div>
+
+                    {monitorConfig.enableFilters && (
+                        <div className="space-y-4 rounded-lg  p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="min-w-0">
+                              <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Include Keywords
+                              </label>
+                              <Input
+                                  value={monitorConfig.filterKeywords}
+                                  onChange={(e) => handleMonitorConfigChange("filterKeywords", e.target.value)}
+                                  placeholder="urgent, important, invoice (comma-separated)"
+                                  className="text-sm"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">
+                                Only process emails containing these keywords
+                              </p>
+                            </div>
+
+                            <div className="min-w-0">
+                              <label className="mb-1 block text-sm font-medium text-gray-700">
+                                Exclude Keywords
+                              </label>
+                              <Input
+                                  value={monitorConfig.excludeKeywords}
+                                  onChange={(e) => handleMonitorConfigChange("excludeKeywords", e.target.value)}
+                                  placeholder="spam, newsletter, unsubscribe (comma-separated)"
+                                  className="text-sm"
+                              />
+                              <p className="mt-1 text-xs text-gray-500">Skip emails containing these keywords</p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-4">
+                            <label className="flex items-center gap-2">
+                              <Switch
+                                  checked={monitorConfig.onlyUnread}
+                                  onCheckedChange={(checked) => handleMonitorConfigChange("onlyUnread", checked)}
+                              />
+                              <span className="text-sm text-gray-700">Only unread emails</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <Switch
+                                  checked={monitorConfig.includeSpam}
+                                  onCheckedChange={(checked) => handleMonitorConfigChange("includeSpam", checked)}
+                              />
+                              <span className="text-sm text-gray-700">Include spam folder</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <Switch
+                                  checked={monitorConfig.includeTrash}
+                                  onCheckedChange={(checked) => handleMonitorConfigChange("includeTrash", checked)}
+                              />
+                              <span className="text-sm text-gray-700">Include trash folder</span>
+                            </label>
+                          </div>
+                        </div>
+                    )}
+                  </section>
+
+                  {/* Save Configuration */}
+                  <div className="border-t pt-4">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+                      <Button
+                          onClick={handleSaveMonitorConfig}
+                          disabled={savingConfig || !monitorConfig.webhookUrl}
+                          className="min-w-32"
+                      >
+                        {savingConfig ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                        ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Save Config
+                            </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    {account.status === "connected" ? (
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Connected
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Disconnected
-                      </Badge>
-                    )}
-                    <Button variant="outline" size="sm">
-                      {account.status === "connected" ? "Disconnect" : "Connect"}
+                </CardContent>
+              </Card>
+
+              {/* Email Automation */}
+              <Card className="rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    <span>Email Automation</span>
+                  </CardTitle>
+                  <CardDescription>Configure automated email processing and responses</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-start sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900">Email Monitoring</div>
+                      <div className="text-sm text-gray-500">
+                        Automatically watch for new incoming emails
+                      </div>
+                    </div>
+                    <Switch
+                        checked={settings.emailMonitoring}
+                        onCheckedChange={(checked) => handleSettingChange("emailMonitoring", checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-start sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900">Auto-Draft Replies</div>
+                      <div className="text-sm text-gray-500">
+                        Generate AI-powered draft responses automatically
+                      </div>
+                    </div>
+                    <Switch
+                        checked={settings.autoDrafting}
+                        onCheckedChange={(checked) => handleSettingChange("autoDrafting", checked)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={'w-full'}>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        Model
+                      </label>
+                      <Select
+
+                          value={settings.aiModel}
+                          onValueChange={(value) => handleSettingChange("aiModel", value)}
+                      >
+                        <SelectTrigger>
+                          Model
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          <SelectItem value="gpt-4">GPT-4 (Recommended)</SelectItem>
+                          <SelectItem value="gpt-3.5">GPT-3.5 Turbo</SelectItem>
+                          <SelectItem value="claude">Claude 3</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="min-w-0">
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        Response Delay (seconds)
+                      </label>
+                      <Input
+                          type="number"
+                          value={settings.responseDelay}
+                          onChange={(e) => handleSettingChange("responseDelay", e.target.value)}
+                          placeholder="30"
+                          className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Security & Privacy */}
+              <Card className="rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <span>Security &amp; Privacy</span>
+                  </CardTitle>
+                  <CardDescription>Manage your data and privacy settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-lg border p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 " />
+                      <span className="font-medium">Data Encryption</span>
+                    </div>
+                    <p className="text-sm ">
+                      All your emails and documents are encrypted at rest and in transit using industry-standard encryption.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Shield className="h-5 w-5 " />
+                      <span className="font-medium text-blue-900">OAuth Security</span>
+                    </div>
+                    <p className="text-sm text-blue-700">
+                      We use OAuth 2.0 for secure authentication. We never store your email passwords.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button variant="outline" className="w-full bg-transparent">
+                      Export My Data
+                    </Button>
+                    <Button variant="outline" className="w-full bg-transparent text-red-600 hover:text-red-700">
+                      Delete Account
                     </Button>
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Email Automation */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Zap className="w-5 h-5" />
-                <span>Email Automation</span>
-              </CardTitle>
-              <CardDescription>Configure automated email processing and responses</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-gray-900">Email Monitoring</div>
-                  <div className="text-sm text-gray-500">Automatically watch for new incoming emails</div>
-                </div>
-                <Switch
-                  checked={settings.emailMonitoring}
-                  onCheckedChange={(checked) => handleSettingChange("emailMonitoring", checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-gray-900">Auto-Draft Replies</div>
-                  <div className="text-sm text-gray-500">Generate AI-powered draft responses automatically</div>
-                </div>
-                <Switch
-                  checked={settings.autoDrafting}
-                  onCheckedChange={(checked) => handleSettingChange("autoDrafting", checked)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">AI Model</label>
-                  <select
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    value={settings.aiModel}
-                    onChange={(e) => handleSettingChange("aiModel", e.target.value)}
-                  >
-                    <option value="gpt-4">GPT-4 (Recommended)</option>
-                    <option value="gpt-3.5">GPT-3.5 Turbo</option>
-                    <option value="claude">Claude 3</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Response Delay (seconds)</label>
-                  <Input
-                    type="number"
-                    value={settings.responseDelay}
-                    onChange={(e) => handleSettingChange("responseDelay", e.target.value)}
-                    placeholder="30"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Bell className="w-5 h-5" />
-                <span>Notifications</span>
-              </CardTitle>
-              <CardDescription>Configure notification preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-gray-900">Email Notifications</div>
-                  <div className="text-sm text-gray-500">Get notified about new emails and drafts</div>
-                </div>
-                <Switch
-                  checked={settings.notifications}
-                  onCheckedChange={(checked) => handleSettingChange("notifications", checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Security */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Shield className="w-5 h-5" />
-                <span>Security & Privacy</span>
-              </CardTitle>
-              <CardDescription>Manage your data and privacy settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-900">Data Encryption</span>
-                </div>
-                <p className="text-sm text-green-700">
-                  All your emails and documents are encrypted at rest and in transit using industry-standard encryption.
-                </p>
-              </div>
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">OAuth Security</span>
-                </div>
-                <p className="text-sm text-blue-700">
-                  We use OAuth 2.0 for secure authentication. We never store your email passwords.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full bg-transparent">
-                  Export My Data
-                </Button>
-                <Button variant="outline" className="w-full text-red-600 hover:text-red-700 bg-transparent">
-                  Delete Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </main>
         </div>
-      </div>
-    </div>
+      </AuthGuard>
   )
 }

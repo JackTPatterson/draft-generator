@@ -1,62 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useSession, signOut } from '@/lib/auth-client';
 
 interface AuthStatus {
   isAuthenticated: boolean;
   provider: string | null;
   email: string | null;
   loading: boolean;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+    image?: string | null;
+  } | null;
 }
 
-export function useAuth() {
-  const [authStatus, setAuthStatus] = useState<AuthStatus>({
-    isAuthenticated: false,
-    provider: null,
-    email: null,
-    loading: true,
-  });
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('/api/auth/status');
-      const data = await response.json();
-      setAuthStatus({
-        isAuthenticated: data.isAuthenticated,
-        provider: data.provider,
-        email: data.email,
-        loading: false,
-      });
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      setAuthStatus({
-        isAuthenticated: false,
-        provider: null,
-        email: null,
-        loading: false,
-      });
-    }
-  };
+export function useAuth(): AuthStatus & {
+  refreshAuth: () => void;
+  logout: () => Promise<void>;
+} {
+  const { data: session, isPending, refetch } = useSession();
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/status', { method: 'DELETE' });
-      setAuthStatus({
-        isAuthenticated: false,
-        provider: null,
-        email: null,
-        loading: false,
-      });
+      await signOut();
     } catch (error) {
       console.error('Error during logout:', error);
     }
   };
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
+  const refreshAuth = () => {
+    refetch();
+  };
 
   return {
-    ...authStatus,
-    refreshAuth: checkAuthStatus,
+    isAuthenticated: !!session?.user,
+    provider: session?.user ? 'better-auth' : null,
+    email: session?.user?.email || null,
+    loading: isPending,
+    user: session?.user || null,
+    refreshAuth,
     logout,
   };
 }

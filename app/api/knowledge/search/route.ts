@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/database'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
+  const userId = await getCurrentUserId(request)
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId') || 'demo-user'
   const query = searchParams.get('query')
   const category = searchParams.get('category')
   const limit = parseInt(searchParams.get('limit') || '10')
@@ -41,9 +47,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getCurrentUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    
     const body = await request.json()
     const { 
-      userId = 'demo-user', 
       query, 
       context, 
       templateId,

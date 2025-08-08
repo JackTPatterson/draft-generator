@@ -40,6 +40,7 @@ export async function PUT(
       subject_template,
       body_template,
       ai_instructions,
+      template_ai_instructions = [],
       variables,
       tags
     } = body
@@ -56,14 +57,15 @@ export async function PUT(
         subject_template = $7,
         body_template = $8,
         ai_instructions = $9,
-        variables = $10,
-        tags = $11,
+        template_ai_instructions = $10,
+        variables = $11,
+        tags = $12,
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `, [
       params.id, name, description, category, type, tone,
-      subject_template, body_template, ai_instructions,
+      subject_template, body_template, ai_instructions, template_ai_instructions,
       JSON.stringify(variables), tags
     ])
 

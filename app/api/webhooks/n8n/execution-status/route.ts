@@ -3,7 +3,7 @@ import { Pool } from 'pg'
 import redisService, { ExecutionStatusUpdate } from '@/lib/redis'
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: 'postgresql://postgres:changeme@localhost:5435/fluxyn_email_automation',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 

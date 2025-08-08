@@ -58,8 +58,8 @@ interface DraftAccordionItemProps {
 }
 
 const priorityConfig = {
-  low: { color: 'bg-gray-100 text-gray-600', label: 'Low' },
-  normal: { color: 'bg-blue-100 text-blue-600', label: 'Normal' },
+  low: { color: 'bg-gray-100 text-gray-500', label: 'Low' },
+  normal: { color: 'bg-blue-100 ', label: 'Normal' },
   high: { color: 'bg-orange-100 text-orange-600', label: 'High' },
   urgent: { color: 'bg-red-100 text-red-600', label: 'Urgent' }
 }
@@ -95,7 +95,7 @@ export default function DraftAccordionItem({
 
   return (
     <AccordionItem value={draft.id} className="border rounded-lg mb-2">
-      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-gray-50">
+      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:">
         <div className="flex items-center justify-between w-full mr-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -185,7 +185,7 @@ export default function DraftAccordionItem({
               )}
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3 border">
+            <div className=" rounded-lg p-3 border">
               <div className="font-medium text-sm mb-2 text-gray-700">
                 Subject: {draft.subject || 'No Subject'}
               </div>
@@ -210,7 +210,7 @@ export default function DraftAccordionItem({
               <Separator />
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-blue-600" />
+                  <BookOpen className="w-4 h-4 " />
                   <h4 className="font-medium text-sm">Knowledge Sources</h4>
                   <Badge variant="secondary" className="text-xs">
                     {draft.citations.length} source{draft.citations.length !== 1 ? 's' : ''}

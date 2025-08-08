@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/database'
+import { getCurrentUserId } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId') || 'demo-user' // TODO: Get from auth
+  const userId = await getCurrentUserId(request)
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+  
   const category = searchParams.get('category')
   const search = searchParams.get('search')
 
@@ -21,6 +27,7 @@ export async function GET(request: NextRequest) {
         subject_template,
         body_template,
         ai_instructions,
+        template_ai_instructions,
         variables,
         tags,
         created_at,
@@ -58,6 +65,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getCurrentUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+    
     const body = await request.json()
     const {
       name,
@@ -68,9 +81,9 @@ export async function POST(request: NextRequest) {
       subject_template,
       body_template,
       ai_instructions,
+      template_ai_instructions = [],
       variables = [],
-      tags = [],
-      userId = 'demo-user' // TODO: Get from auth
+      tags = []
     } = body
 
     if (!name || !body_template) {
@@ -82,13 +95,13 @@ export async function POST(request: NextRequest) {
     const result = await client.query(`
       INSERT INTO email_templates (
         user_id, name, description, category, type, tone,
-        subject_template, body_template, ai_instructions,
+        subject_template, body_template, ai_instructions, template_ai_instructions,
         variables, tags
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `, [
       userId, name, description, category, type, tone,
-      subject_template, body_template, ai_instructions,
+      subject_template, body_template, ai_instructions, template_ai_instructions,
       JSON.stringify(variables), tags
     ])
 

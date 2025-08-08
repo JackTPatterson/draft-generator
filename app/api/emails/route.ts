@@ -1,22 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import {getEmailsWithExecutions, type EmailExecution, deleteEmailExecutions} from '@/lib/database'
 import { gmailService, type ParsedEmail } from '@/lib/gmail-api'
+import { getCurrentUserId } from '@/lib/auth-utils'
+import { getGmailConnectionStatus } from '@/lib/gmail-better-auth'
+import pool from '@/lib/database'
 
-// Helper function to get access token from cookies
-async function getGmailAccessToken(): Promise<string | null> {
+// Helper function to get access token from better-auth
+async function getGmailAccessToken(request?: NextRequest): Promise<string | null> {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('gmail_access_token')?.value
+    const userId = await getCurrentUserId(request)
+    if (!userId) {
+      console.warn('No authenticated user found')
+      return null
+    }
+
+    const client = await pool.connect()
+    const result = await client.query(`
+      SELECT access_token FROM gmail_tokens 
+      WHERE user_id = $1 
+      LIMIT 1
+    `, [userId])
     
-    if (!accessToken) {
-      console.warn('No Gmail access token found in cookies')
+    client.release()
+
+    if (result.rows.length === 0) {
+      console.warn('No Gmail access token found for user')
       return null
     }
     
-    return accessToken
+    return result.rows[0].access_token
   } catch (error) {
-    console.error('Error reading Gmail access token from cookies:', error)
+    console.error('Error reading Gmail access token:', error)
     return null
   }
 }
@@ -41,13 +55,13 @@ function formatTime(date: Date | null): string {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Get email executions from database
     const executions = await getEmailsWithExecutions()
     
     // Get Gmail access token
-    const accessToken = await getGmailAccessToken()
+    const accessToken = await getGmailAccessToken(request)
 
 
     if (!accessToken) {
@@ -164,6 +178,8 @@ export async function GET() {
         }
       })
     )
+
+    console.log({emailsWithDetails: emailsWithDetails.map(email => email.execution.drafts.map(draft => draft.template_used))})
 
     return NextResponse.json(emailsWithDetails)
   } catch (error) {

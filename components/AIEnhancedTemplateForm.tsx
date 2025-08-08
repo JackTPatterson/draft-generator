@@ -302,7 +302,7 @@ export default function AIEnhancedTemplateForm({
             <Card className="bg-blue-50 border-blue-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-blue-600" />
+                  <Lightbulb className="w-4 h-4 " />
                   Quick Suggestions
                 </CardTitle>
               </CardHeader>
@@ -328,7 +328,7 @@ export default function AIEnhancedTemplateForm({
             <Card className="bg-green-50 border-green-200">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <CheckCircle className="w-4 h-4 " />
                   <span className="text-sm font-medium text-green-800">
                     Knowledge Context Active
                   </span>

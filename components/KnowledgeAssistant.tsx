@@ -72,7 +72,6 @@ export default function KnowledgeAssistant({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          userId: 'demo-user',
           query: searchQuery,
           templateId,
           emailContent
@@ -100,7 +99,7 @@ export default function KnowledgeAssistant({
       <Card className="border-dashed">
         <CardContent className="p-6 text-center">
           <Brain className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-gray-500 mb-4">
             Search your knowledge base to get AI-powered suggestions
           </p>
           <div className="flex gap-2">
@@ -142,7 +141,7 @@ export default function KnowledgeAssistant({
         <Card>
           <CardContent className="p-6 text-center">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">Searching knowledge base...</p>
+            <p className="text-sm text-gray-500">Searching knowledge base...</p>
           </CardContent>
         </Card>
       )}
@@ -188,7 +187,7 @@ export default function KnowledgeAssistant({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <BookOpen className="w-5 h-5 text-blue-600" />
+                  <BookOpen className="w-5 h-5 " />
                   Relevant Documents
                 </CardTitle>
                 <CardDescription>
@@ -215,7 +214,7 @@ export default function KnowledgeAssistant({
                       )}
                     </div>
                     {doc.snippet && (
-                      <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                      <p className="text-xs text-gray-500  p-2 rounded">
                         {doc.snippet}
                       </p>
                     )}
@@ -230,7 +229,7 @@ export default function KnowledgeAssistant({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="w-5 h-5 text-green-600" />
+                  <FileText className="w-5 h-5 " />
                   Relevant Content
                 </CardTitle>
                 <CardDescription>
@@ -270,12 +269,12 @@ export default function KnowledgeAssistant({
           <Card className="bg-green-50 border-green-200">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 " />
                 <div>
                   <p className="text-sm font-medium text-green-800">
                     Knowledge Context Active
                   </p>
-                  <p className="text-xs text-green-600">
+                  <p className="text-xs ">
                     AI will use {knowledgeContext.relevantDocuments.length} documents and {knowledgeContext.relevantChunks.length} content sections for enhanced responses
                   </p>
                 </div>

@@ -124,7 +124,7 @@ function UploadDropzone({ onUpload, categories }: {
         onDrop={handleDrop}
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           dragActive 
-            ? 'border-blue-500 bg-blue-50' 
+            ? 'border-[#25206b] bg-blue-50' 
             : 'border-gray-300 hover:border-gray-400'
         }`}
       >
@@ -139,11 +139,11 @@ function UploadDropzone({ onUpload, categories }: {
         <label htmlFor="file-upload" className="cursor-pointer">
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           {dragActive ? (
-            <p className="text-blue-600">Drop the files here...</p>
+            <p className="">Drop the files here...</p>
           ) : (
             <div>
-              <p className="text-gray-600 mb-2">
-                Drag & drop files here, or <span className="text-blue-600">click to browse</span>
+              <p className="text-gray-500 mb-2">
+                Drag & drop files here, or <span className="">click to browse</span>
               </p>
               <p className="text-sm text-gray-500">
                 Supports PDF, DOCX, TXT, MD, HTML, XLSX, CSV (max 10MB each)
@@ -342,19 +342,19 @@ export default function KnowledgeBase() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <Spinner/>
-          <p className="text-gray-600 mt-1">Loading knowledge base...</p>
+          <p className="text-gray-500 mt-1">Loading knowledge base...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className=" border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
@@ -396,7 +396,7 @@ export default function KnowledgeBase() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Business Knowledge Base</h1>
-          <p className="text-gray-600">Upload and manage documents to enhance AI-powered email responses</p>
+          <p className="text-gray-500">Upload and manage documents to enhance AI-powered email responses</p>
         </div>
 
         {/* Upload Progress */}
@@ -635,7 +635,7 @@ export default function KnowledgeBase() {
                 'No documents yet'
               }
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-500 mb-4">
               {searchTerm || (selectedCategory && selectedCategory !== "__all__") || (selectedStatus && selectedStatus !== "__all__") ? 
                 'Try adjusting your search or filters' : 
                 'Upload your first business document to get started with AI-enhanced email responses'

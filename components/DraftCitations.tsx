@@ -44,7 +44,7 @@ const categoryColors: { [key: string]: string } = {
   'Legal Documents': 'bg-red-50 text-red-700 border-red-200',
   'Marketing Materials': 'bg-purple-50 text-purple-700 border-purple-200',
   'Customer Service': 'bg-orange-50 text-orange-700 border-orange-200',
-  default: 'bg-gray-50 text-gray-700 border-gray-200'
+  default: ' text-gray-700 border-gray-200'
 }
 
 export default function DraftCitations({ 
@@ -84,7 +84,7 @@ export default function DraftCitations({
             <Button 
               variant="ghost" 
               size="sm" 
-              className="h-6 p-1 text-xs flex items-center gap-1 text-gray-600 hover:text-gray-800"
+              className="h-6 p-1 text-xs flex items-center gap-1 text-gray-500 hover:text-gray-800"
             >
               <BookOpen className="w-3 h-3" />
               <span>
@@ -147,17 +147,17 @@ export default function DraftCitations({
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <span className="text-xs font-medium text-gray-600">Available Sources</span>
+                    <span className="text-xs font-medium text-gray-500">Available Sources</span>
                   </div>
                   <div className="space-y-1 ml-3">
                     {availableSources.slice(0, 3).map((citation) => (
                       <div key={citation.id} className="flex items-center gap-2 text-xs opacity-75">
-                        <Badge variant="outline" className="px-1 py-0 text-[10px] bg-gray-50 text-gray-600">
+                        <Badge variant="outline" className="px-1 py-0 text-[10px]  text-gray-500">
                           {citation.label}
                         </Badge>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
                           {getCategoryIcon(citation.category)}
-                          <span className="truncate text-gray-600">{citation.title}</span>
+                          <span className="truncate text-gray-500">{citation.title}</span>
                           {citation.category && (
                             <Badge className={`text-[9px] px-1 py-0 ${getCategoryColor(citation.category)} opacity-75`}>
                               {citation.category}
@@ -201,7 +201,7 @@ export default function DraftCitations({
     <Card className={className}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-blue-600" />
+          <BookOpen className="w-4 h-4 " />
           Knowledge Sources
           <Badge variant="secondary" className="ml-auto text-xs">
             {citations.length}
@@ -229,7 +229,7 @@ export default function DraftCitations({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-gray-600 line-clamp-2">
+              <p className="text-xs text-gray-500 line-clamp-2">
                 {citation.snippet || citation.text}
               </p>
               <div className="flex justify-between items-center mt-1">
